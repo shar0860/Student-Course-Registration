@@ -1,0 +1,181 @@
+﻿@page
+@model RegistrationModel
+@{
+    ViewData["Title"] = "Student Registration";
+}
+<style>
+    .cursor-pointer {
+        cursor: pointer;
+    }
+
+    .info-message {
+        background-color: #e0f7fa;
+        padding: 10px;
+        border-radius: 5px;
+        color: #006064;
+        margin-bottom: 10px;
+    }
+
+    .success-message {
+        background-color: ghostwhite; 
+        padding: 10px;
+        border-radius: 5px;
+        color: yellowgreen;
+        font-weight: bold;
+        margin-bottom: 10px;
+        text-align: center;
+    }
+
+    .btn-custom {
+        background-color: #006064;
+        color: white;
+        border-radius: 0;
+    }
+
+        .btn-custom:hover {
+            background-color: #004d4d;
+        }
+
+    .table th {
+        background-color: #006064;
+        color: white;
+    }
+
+    .table-hover tbody tr:hover {
+        background-color: #e0f7fa;
+    }
+</style>
+
+<div class="container mt-8">
+    <div class="row">
+        <div class="col-md-6 offset-md-3">
+            <h2 class="mb-4 text-center">Student Registration</h2>
+
+            @if (!string.IsNullOrEmpty(Model.ErrorMessage))
+            {
+                <div class="alert alert-danger">
+                    @Model.ErrorMessage
+                </div>
+            }
+
+            @if (!string.IsNullOrEmpty(Model.SuccessMessage))
+            {
+                <div class="success-message">
+                    @Model.SuccessMessage
+                </div>
+            }
+
+            <form method="post" class="mb-8">
+                <div class="form-group">
+                    <select asp-for="SelectedStudentId" asp-items="@(new SelectList(Model.Students, "StudentId", "StudentName"))" class="form-control">
+                        <option value="">Select a student</option>
+                    </select>
+                </div>
+
+                <button type="submit" asp-page-handler="StudentSelected" class="btn btn-success btn-block mt-3 mb-3">Get Registrations</button>
+            </form>
+
+            @if (!string.IsNullOrEmpty(Model.SelectedStudentId))
+            {
+                @if (Model.RegisteredCourses == null || Model.RegisteredCourses.Count == 0)
+                {
+                    <div class="info-message">
+                        The student has not registered any course. Select course(s) to register.
+                    </div>
+                }
+            }
+
+            @if (Model.RegisteredCourses != null && Model.RegisteredCourses.Count > 0)
+            {
+                <h4 class="mt-5">Registered Courses</h4>
+
+                <div class="info-message">
+                    The student has registered for the following courses. You can enter or edit the grades.
+                </div>
+
+                <form method="post">
+                    <input type="hidden" asp-for="SelectedStudentId" />
+                    <input type="hidden" id="SortColumn" name="SortColumn" value="@Model.SortColumn" />
+                    <input type="hidden" id="SortOrder" name="SortOrder" value="@Model.SortOrder" />
+
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th scope="col" class="w-25 text-primary cursor-pointer" data-column="CourseCode">Course Code</th>
+                                <th scope="col" class="w-50 text-primary cursor-pointer" data-column="CourseTitle">Course Title</th>
+                                <th scope="col" class="w-25 text-primary cursor-pointer" data-column="Grades">Grades</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var course in Model.RegisteredCourses)
+                            {
+                                <tr>
+                                    <td>@course.CourseCode</td>
+                                    <td>@course.CourseTitle</td>
+                                    <td>
+                                        <input type="text" class="form-control" name="CourseGrades[@course.CourseCode]" value="@course.Grade" />
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                    <button type="submit" asp-page-handler="SubmitGrades" class="btn btn-primary mt-1">Submit Grades</button>
+                </form>
+            }
+            else if (Model.Courses != null && Model.Courses.Count > 0)
+            {
+                <form method="post">
+                    <input type="hidden" asp-for="SelectedStudentId" />
+
+                    <h4>Select Courses to Register</h4>
+                    @foreach (var course in Model.Courses)
+                    {
+                        <div class="form-check">
+                            <input type="checkbox" class="form-check-input" name="SelectedCourses" value="@course.CourseCode" id="@course.CourseCode" />
+                            <label class="form-check-label" for="@course.CourseCode">(@course.CourseCode) - @course.CourseTitle</label>
+                        </div>
+                    }
+
+                    <button type="submit" asp-page-handler="Register" class="btn btn-custom btn-block mt-4">Register</button>
+                </form>
+            }
+        </div>
+    </div>
+</div>
+
+<script>
+    document.querySelectorAll('th').forEach(header => {
+        header.addEventListener('click', () => {
+            const table = header.parentElement.parentElement.parentElement;
+            const tbody = table.querySelector('tbody');
+            const rows = Array.from(tbody.querySelectorAll('tr'));
+            const index = Array.from(header.parentElement.children).indexOf(header);
+            const ascending = header.classList.toggle('asc');
+            const column = header.getAttribute('data-column');
+
+            document.getElementById('SortColumn').value = column;
+            document.getElementById('SortOrder').value = ascending ? 'asc' : 'desc';
+
+            rows.sort((rowA, rowB) => {
+                let cellA, cellB;
+
+                if (index === 2) {
+                    cellA = rowA.querySelector('input').value.trim();
+                    cellB = rowB.querySelector('input').value.trim();
+
+                    const gradeA = parseFloat(cellA) || 0;
+                    const gradeB = parseFloat(cellB) || 0;
+
+                    return ascending ? gradeA - gradeB : gradeB - gradeA;
+                } else {
+                    cellA = rowA.children[index].textContent.trim();
+                    cellB = rowB.children[index].textContent.trim();
+
+                    return ascending ? cellA.localeCompare(cellB) : cellB.localeCompare(cellA);
+                }
+            });
+
+            rows.forEach(row => tbody.appendChild(row));
+        });
+    });
+</script>
